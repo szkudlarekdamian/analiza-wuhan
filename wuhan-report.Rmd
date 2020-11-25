@@ -29,7 +29,7 @@ library(gganimate)
 ```
 
 ```{r data, cache=TRUE}
-df <- read.xlsx(xlsxFile="F:\\Studia\\ZED\\Projekt\\data\\wuhan_blood_sample_data_Jan_Feb_2020.xlsx", fillMergedCells = TRUE, sheet = 1)
+df <- read.xlsx(xlsxFile="data\\wuhan_blood_sample_data_Jan_Feb_2020.xlsx", fillMergedCells = TRUE, sheet = 1)
 df$RE_DATE = convertToDateTime(df$RE_DATE)
 df$Admission.time = convertToDateTime(df$Admission.time)
 df$Discharge.time = convertToDateTime(df$Discharge.time)
