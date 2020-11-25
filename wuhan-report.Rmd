@@ -1,0 +1,122 @@
+---
+title: "Projekt"
+author: "Damian Szkudlarek"
+date: "17 11 2020"
+output: 
+  html_document: 
+    toc: yes
+    toc_float: true
+    df_print: kable
+---
+5.Sekcję podsumowującą rozmiar zbioru i podstawowe statystyki.
+6.Szczegółową analizę wartości atrybutów.
+7.Sekcję sprawdzającą korelacje między zmiennymi; sekcja ta powinna zawierać jakąś formę graficznej prezentacji korelacji.
+8.Interaktywny wykres lub animację prezentującą zmianę wybranych atrybutów w czasie.
+9.Sekcję próbującą stworzyć klasyfikator przewidujący czy dany pacjent przeżyje (w tej sekcji należy wykorzystać wiedzę z                   pozostałych punktów oraz wykonać dodatkowe czynności, które mogą poprawić trafność predykcji); dobór parametrów modelu oraz                 oszacowanie jego skuteczności powinny zostać wykonane za pomocą techniki podziału zbioru na dane uczące, walidujące i testowe;trafność     klasyfikacji powinna zostać oszacowana na podstawie kliku wybranych (i uzasadnionych) miar oceny klasyfikacji.
+10.Analizę ważności atrybutów najlepszego znalezionego modelu.
+11.Dodatkowo punktowane będzie wykonanie analizy typowej dla danych klinicznych, np. regresji logistycznej wraz z wzięciem pod uwagę czynników zakłócających (ang. confounding factors) lub regresji Coxa (ang. Cox Proportional-Hazards Model).
+```{r include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r setup, warning = FALSE, message=FALSE}
+library(openxlsx)
+library(skimr)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(gganimate)
+```
+
+```{r data, cache=TRUE}
+df <- read.xlsx(xlsxFile="F:\\Studia\\ZED\\Projekt\\data\\wuhan_blood_sample_data_Jan_Feb_2020.xlsx", fillMergedCells = TRUE, sheet = 1)
+df$RE_DATE = convertToDateTime(df$RE_DATE)
+df$Admission.time = convertToDateTime(df$Admission.time)
+df$Discharge.time = convertToDateTime(df$Discharge.time)
+```
+
+```{r warning=FALSE}
+set.seed(131836)
+# head(df)
+```
+
+# Opis danych
+```{r warning=FALSE}
+skim(df)
+```
+
+# Wykres zmienny w czasie
+```{r time chart, cache=TRUE, echo=FALSE, warning = FALSE, message=FALSE}
+p <- df %>%
+  select(RE_DATE, gender, Lactate.dehydrogenase) %>%
+  drop_na() %>%
+  mutate(RE_DATE = as.Date(RE_DATE))  %>%
+  group_by(RE_DATE, gender) %>%
+  summarise(Lactate.dehydrogenase = mean(Lactate.dehydrogenase)) %>%
+  mutate(gender = replace(gender, gender == 1, "mężczyzna"))%>%
+  mutate(gender = replace(gender, gender == 2, "kobieta"))
+
+  
+p %>%
+  rename(`Płeć` = gender) %>%
+  ggplot(aes(y=Lactate.dehydrogenase, x=RE_DATE, color = `Płeć`)) +
+  geom_line(size=1.05) +
+  scale_fill_manual(values=c("#E69F00", "#56B4E9"))+
+  labs(x = "Data", y = "Dehydrogenaza mleczanowa (LDH)") +
+  ggtitle("Średni poziom LDH wśród pacjentów badanych w styczniu i lutym") + 
+  theme_bw(base_size = 12) +
+  theme(legend.position = "top")+
+  scale_x_date(breaks = scales::breaks_width("7 days")) +
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 7)) +
+  transition_reveal(RE_DATE)
+
+```
+
+# Korelacja między atrybutami
+
+```{r echo=FALSE, warning = FALSE, message=FALSE}
+cols = colnames(select_if(df, is.numeric))
+corrs <- data.frame(col1=character(), col2=character(), coef=numeric())
+i <- 0
+for (col1 in cols) {
+  i <- i+1
+  for(col2 in cols[-(1:i)]){
+    tryCatch(
+       corrs <- rbind(corrs, list(col1,col2,cor.test(df[,col1], df[,col2], method = 'pearson')$estimate)),
+       error=function(err) corrs<-rbind(corrs, list(col1,col2,-69.0))
+    )
+  }
+}
+names(corrs) <- c("col1","col2","coef")
+corrs <- corrs %>%
+  filter(coef<=0.999 & coef>0.8)%>%
+  group_by(col1,col2)%>%
+  mutate(rows=df[c(col1,col2)]%>%drop_na()%>%nrow())%>%
+  filter(rows<6000)%>%
+  ungroup() %>%
+  slice_max(rows,n=10)
+
+```
+
+```{r}
+all_pairs <- corrs %>% group_by(col1,col2)%>% mutate(pairs=list(c(col1,col2)), .keep="used") %>% ungroup() %>% select(pairs)
+as.list(all_pairs)[[1]]
+```
+
+# Limfocyty i wapn
+```{r}
+corr_df <- df %>%
+  select(RE_DATE, White.blood.cell.count, neutrophils.count	) %>%
+  drop_na() %>%
+  mutate(RE_DATE = as.Date(RE_DATE))  %>%
+  distinct()
+
+corr_df %>%
+  ggplot(aes(y=White.blood.cell.count, x=neutrophils.count, color = RE_DATE)) +
+  geom_point()+
+  geom_smooth(colour="red")
+
+
+```
+
+
