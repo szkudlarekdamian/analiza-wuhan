@@ -2,16 +2,17 @@
 title: "Projekt"
 author: "Damian Szkudlarek"
 date: "17 11 2020"
-output: 
-  html_document: 
+output:
+  html_document:
+    theme: spacelab
+    highlight: kate
     toc: yes
-    toc_float: true
-    df_print: kable
+    toc_float: true 
+    df_print: paged
 ---
 5.Sekcję podsumowującą rozmiar zbioru i podstawowe statystyki.
 6.Szczegółową analizę wartości atrybutów.
 7.Sekcję sprawdzającą korelacje między zmiennymi; sekcja ta powinna zawierać jakąś formę graficznej prezentacji korelacji.
-8.Interaktywny wykres lub animację prezentującą zmianę wybranych atrybutów w czasie.
 9.Sekcję próbującą stworzyć klasyfikator przewidujący czy dany pacjent przeżyje (w tej sekcji należy wykorzystać wiedzę z                   pozostałych punktów oraz wykonać dodatkowe czynności, które mogą poprawić trafność predykcji); dobór parametrów modelu oraz                 oszacowanie jego skuteczności powinny zostać wykonane za pomocą techniki podziału zbioru na dane uczące, walidujące i testowe;trafność     klasyfikacji powinna zostać oszacowana na podstawie kliku wybranych (i uzasadnionych) miar oceny klasyfikacji.
 10.Analizę ważności atrybutów najlepszego znalezionego modelu.
 11.Dodatkowo punktowane będzie wykonanie analizy typowej dla danych klinicznych, np. regresji logistycznej wraz z wzięciem pod uwagę czynników zakłócających (ang. confounding factors) lub regresji Coxa (ang. Cox Proportional-Hazards Model).
@@ -29,7 +30,8 @@ library(gganimate)
 ```
 
 ```{r data, cache=TRUE}
-df <- read.xlsx(xlsxFile="data\\wuhan_blood_sample_data_Jan_Feb_2020.xlsx", fillMergedCells = TRUE, sheet = 1)
+df <- read.xlsx(xlsxFile="data\\wuhan_blood_sample_data_Jan_Feb_2020.xlsx", fillMergedCells = TRUE, sheet = 1) %>%
+  rename(NT_proBNP = `Amino-terminal.brain.natriuretic.peptide.precursor(NT-proBNP)`)
 df$RE_DATE = convertToDateTime(df$RE_DATE)
 df$Admission.time = convertToDateTime(df$Admission.time)
 df$Discharge.time = convertToDateTime(df$Discharge.time)
@@ -37,12 +39,12 @@ df$Discharge.time = convertToDateTime(df$Discharge.time)
 
 ```{r warning=FALSE}
 set.seed(131836)
-# head(df)
 ```
 
 # Opis danych
 ```{r warning=FALSE}
-skim(df)
+my_skim <- skim_with(numeric = sfl(hist = NULL, p25=NULL,p75=NULL))
+my_skim(df)
 ```
 
 # Wykres zmienny w czasie
@@ -89,33 +91,52 @@ for (col1 in cols) {
 }
 names(corrs) <- c("col1","col2","coef")
 corrs <- corrs %>%
-  filter(coef<=0.999 & coef>0.8)%>%
+  filter(coef<=0.999 & coef>0.85)%>%
   group_by(col1,col2)%>%
   mutate(rows=df[c(col1,col2)]%>%drop_na()%>%nrow())%>%
   filter(rows<6000)%>%
   ungroup() %>%
-  slice_max(rows,n=10)
+  slice_max(rows,n=10)%>% 
+  slice_max(coef,n=7)
 
 ```
 
-```{r}
-all_pairs <- corrs %>% group_by(col1,col2)%>% mutate(pairs=list(c(col1,col2)), .keep="used") %>% ungroup() %>% select(pairs)
-as.list(all_pairs)[[1]]
+```{r message=FALSE, warning=FALSE}
+all_pairs <- corrs %>% group_by(col1,col2)%>% mutate(pairs=list(c(col1,col2,round(coef, 2))), .keep="used") %>% ungroup() %>% select(pairs)
+all_pairs <- as.list(all_pairs)[[1]]
+for (pair in all_pairs){
+  corr_df <- df %>%
+    select(age, pair[1], pair[2]) %>%
+    drop_na() %>%
+    distinct()
+  tmp_plt <- corr_df %>%
+    ggplot(aes(y=corr_df[,pair[1]], x=corr_df[,pair[2]], color = age)) +
+    geom_point()+
+    geom_smooth(colour="red", size=0.4) +
+    labs(x = pair[2], y = pair[1]) +
+    ggtitle(paste(
+      "Atrybuty ",
+      gsub('\\.',' ',pair[2]),
+      " i ",
+      gsub('\\.',' ',pair[1]),
+      "\nWspółczynnik korelacji:", pair[3], sep = " ")
+      ) + 
+    theme_bw(base_size = 12)
+  print(tmp_plt)
+}
 ```
 
 # Limfocyty i wapn
 ```{r}
 corr_df <- df %>%
-  select(RE_DATE, White.blood.cell.count, neutrophils.count	) %>%
+  select(age, White.blood.cell.count, neutrophils.count	) %>%
   drop_na() %>%
-  mutate(RE_DATE = as.Date(RE_DATE))  %>%
   distinct()
 
 corr_df %>%
-  ggplot(aes(y=White.blood.cell.count, x=neutrophils.count, color = RE_DATE)) +
+  ggplot(aes(y=White.blood.cell.count, x=neutrophils.count, color = age)) +
   geom_point()+
   geom_smooth(colour="red")
-
 
 ```
 
