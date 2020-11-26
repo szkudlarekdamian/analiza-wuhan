@@ -46,6 +46,20 @@ set.seed(131836)
 my_skim <- skim_with(numeric = sfl(hist = NULL, p25=NULL,p75=NULL))
 my_skim(df)
 ```
+## Podziau na pucie
+```{r}
+df %>% select(gender) %>% group_by(gender) %>% summarise(count=n()) %>% ungroup() %>% mutate(gender = ifelse(gender==1, "male", "female")) %>%
+  ggplot(aes(y=count, x=gender, fill=gender)) +
+  # scale_x_discrete () +
+  geom_bar(stat="identity", width = 0.6)
+```
+```{r}
+df %>% select(gender, outcome) %>% group_by(gender, outcome) %>% summarise(count=n()) %>% ungroup() %>% mutate(gender = ifelse(gender==1, "male", "female"), outcome =ifelse(outcome==1, "dead", "alive")) %>%
+  ggplot(aes(y=count, x=gender, fill=gender)) +
+  # scale_x_discrete () +
+  geom_bar(stat="identity", width = 0.6) +
+  facet_grid(.~outcome)
+```
 
 # Wykres zmienny w czasie
 ```{r time chart, cache=TRUE, echo=FALSE, warning = FALSE, message=FALSE}
