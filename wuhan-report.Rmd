@@ -19,33 +19,72 @@ output:
 knitr::opts_chunk$set(echo = FALSE)
 ```
 
-```{r setup, warning = FALSE, message=FALSE}
+# Biblioteki
+```{r setup, echo=TRUE, warning = FALSE, message=FALSE}
 library(openxlsx)
 library(skimr)
 library(dplyr)
 library(tidyr)
 library(ggplot2)
 library(gganimate)
-library(RColorBrewer)
+# library(RColorBrewer)
 ```
 
-```{r data, cache=TRUE}
-df <- read.xlsx(xlsxFile="data\\wuhan_blood_sample_data_Jan_Feb_2020.xlsx", fillMergedCells = TRUE, sheet = 1) %>%
-  rename(NT_proBNP = `Amino-terminal.brain.natriuretic.peptide.precursor(NT-proBNP)`)
+# Wczytanie danych
+```{r data, echo=TRUE, cache=TRUE}
+df <- read.xlsx(xlsxFile="data\\wuhan_blood_sample_data_Jan_Feb_2020.xlsx", fillMergedCells = TRUE, sheet = 1) 
 df$RE_DATE = convertToDateTime(df$RE_DATE)
 df$Admission.time = convertToDateTime(df$Admission.time)
 df$Discharge.time = convertToDateTime(df$Discharge.time)
 ```
 
-```{r warning=FALSE}
+```{r echo=TRUE, warning=FALSE}
 set.seed(131836)
 ```
 
 # Opis danych
 ```{r warning=FALSE}
-my_skim <- skim_with(numeric = sfl(hist = NULL, p25=NULL,p50=NULL))
+df <- df %>%  rename(NT_proBNP = `Amino-terminal.brain.natriuretic.peptide.precursor(NT-proBNP)`)
+my_skim <- skim_with(numeric = sfl(hist = NULL, p25=NULL, p50=NULL))
 my_skim(df)
 ```
+ 
+Z powyższych zestawień można wyciągnąć wiele wniosków m.in.
+
+* zbiór składa się z 6120 rekordów,
+* rekord opisuje 81 atrybutów,
+* 78 atrybutów jest liczbowych,
+* 3 atrybuty przechowują dane kalendarzowe (typ POSIXct),
+* atrybutami bez brakujących wartości są: `PATIENT_ID`, `age`, `gender`, `outcome`, `Admission time` i `Discharge time`,
+* większość atrybutów jest kompletna w 10% ± 5%,
+* atrybut `2019-nCoV.nucleic.acid.detection` składa się w 92% z wartości pustych, pozostałe 8% to stała wartość -1
+
+# Czyszczenie zbioru danych
+Zbiór danych nie jest idealny. Za zupełnie bezwartościowe uznać można wiersze, w których brakuje każdego badania. Takie wiersze można rozpoznać również po tym, że data pobrania krwi (RE_DATE) jest wartością brakującą.
+```{r echo=TRUE}
+identical(
+    df %>% filter(is.na(RE_DATE)),
+    df %>% filter(across(-(1:7),is.na))
+  )
+```
+Jak widać brak wartości `RE_DATE` wiąże się z brakiem wartości wszystkich biomarkerów. Zbędne wiersze zostały usunięte ze zbioru, żeby nie produkować choćby minimalnego szumu.
+
+```{r echo=TRUE}
+df <- df %>% filter(!is.na(RE_DATE))
+```
+
+Wiele rekordów cechuje się brakiem wartości w większości atrybutów. Zjawisko to przedstawione zostało poniżej.
+
+```{r warning=FALSE}
+rowSums(is.na(df)) %>% as.data.frame() %>%
+   ggplot(aes(.)) +
+  geom_bar(stat="count", fill="#FFBEBB") +
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 7)) +
+  xlab("brakujących wartości w wierszu") +
+  ylab("wierszy")
+```
+
+
 
 ## Rozkład wykonanych badań na pacjentach
 ```{r}
@@ -242,3 +281,13 @@ df %>% select(PATIENT_ID, outcome, `High.sensitivity.C-reactive.protein`) %>% dr
   xlab("hs-CRP")+
   ylab("przypadków")
 ```
+
+
+```{r}
+biomarkers <- df %>% select(Lactate.dehydrogenase, `High.sensitivity.C-reactive.protein`, `(%)lymphocyte`)
+names(biomarkers) <- c("LDH","hs-CRP","lymphocytes")
+biomarkers %>% drop_na()
+biomarkers[!apply(biomarkers, 1, function(x) all(is.na(x))),]
+
+```
+
