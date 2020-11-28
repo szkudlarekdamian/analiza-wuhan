@@ -3,12 +3,11 @@ title: "Projekt"
 author: "Damian Szkudlarek"
 date: "17 11 2020"
 output:
-  html_document:
+  html_document: 
     theme: spacelab
     highlight: kate
     toc: yes
-    toc_float: true 
-    df_print: paged
+    toc_float: yes
 ---
 5.Sekcję podsumowującą rozmiar zbioru i podstawowe statystyki.
 6.Szczegółową analizę wartości atrybutów.
@@ -17,7 +16,7 @@ output:
 10.Analizę ważności atrybutów najlepszego znalezionego modelu.
 11.Dodatkowo punktowane będzie wykonanie analizy typowej dla danych klinicznych, np. regresji logistycznej wraz z wzięciem pod uwagę czynników zakłócających (ang. confounding factors) lub regresji Coxa (ang. Cox Proportional-Hazards Model).
 ```{r include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = FALSE)
 ```
 
 ```{r setup, warning = FALSE, message=FALSE}
@@ -47,8 +46,26 @@ set.seed(131836)
 my_skim <- skim_with(numeric = sfl(hist = NULL, p25=NULL,p50=NULL))
 my_skim(df)
 ```
+
+## Rozkład wykonanych badań na pacjentach
+```{r}
+df %>% select(PATIENT_ID) %>% group_by(PATIENT_ID) %>% mutate(howManyTests=n()) %>% distinct() %>% ungroup() %>% select(howManyTests)%>%
+  ggplot(aes(x=howManyTests)) +
+  geom_bar(stat="count", fill="#FFBEBB")+
+  scale_x_continuous(breaks = scales::pretty_breaks(n=12))+
+  scale_y_continuous(breaks = scales::pretty_breaks(n=5)) +
+  geom_vline(
+    aes(xintercept = mean(howManyTests)),
+    color = "black",
+    linetype = "dashed",
+    size = 1)+
+  xlab("liczba wykonanych badań")+
+  ylab("przypadków")
+```
+
+
 ## Liczebność pacjentów ze względu na płeć
-```{r echo=FALSE}
+```{r}
 df %>% select(PATIENT_ID, gender) %>% distinct() %>% mutate(gender = ifelse(gender==1, "mężczyzna", "kobieta")) %>%
   rename(`Płeć` = gender) %>%
   ggplot(aes(x=`Płeć`, fill=`Płeć`)) +
@@ -60,12 +77,12 @@ df %>% select(PATIENT_ID, gender) %>% distinct() %>% mutate(gender = ifelse(gend
 ```
 
 ## Śmiertelność wśród płci
-```{r echo=FALSE}
+```{r}
 df %>% select(PATIENT_ID, gender, outcome)  %>% distinct() %>% mutate(gender = ifelse(gender==1, "mężczyzna", "kobieta"), outcome = ifelse(outcome==1, "martwi", "żyjący")) %>%
   rename(`Płeć` = gender) %>%
   ggplot(aes(x=`Płeć`, fill=`Płeć`)) +
     geom_bar(stat="count", width = 0.6) +
-    ylab("przypadki") +
+    ylab("przypadków") +
     stat_count(geom = "text", colour = "white", size = 4,
                 aes(label = ..count..), position=position_stack(vjust=0.5))+
     facet_grid( . ~outcome)+
@@ -73,7 +90,7 @@ df %>% select(PATIENT_ID, gender, outcome)  %>% distinct() %>% mutate(gender = i
 ```
 
 ## Rozkład wieku wśród płci
-```{r echo=FALSE}
+```{r}
 df %>% select(PATIENT_ID, age, gender)  %>% distinct() %>% mutate(gender = ifelse(gender==1, "mężczyzna", "kobieta")) %>%
   rename(`Płeć` = gender) %>%
   ggplot(aes(age, fill=`Płeć`, alpha=0.15)) + 
@@ -90,7 +107,7 @@ df %>% select(PATIENT_ID, age, gender)  %>% distinct() %>% mutate(gender = ifels
 
 
 ## Liczba śmiertelnych przypadków wśród grup wiekowych
-```{r echo=FALSE}
+```{r}
 df %>% filter(outcome==1) %>% select(PATIENT_ID, age, gender)  %>% distinct() %>% select(-PATIENT_ID)  %>% 
   mutate(
     gender = ifelse(gender==1, "mężczyzna", "kobieta"),
@@ -98,7 +115,7 @@ df %>% filter(outcome==1) %>% select(PATIENT_ID, age, gender)  %>% distinct() %>
   rename(`Płeć` = gender) %>%
   ggplot(aes(x=`Płeć`, fill=`Płeć`)) + 
     geom_bar()+
-    ylab("przypadki") +
+    ylab("przypadków") +
     facet_grid(.~bin)+
     stat_count(geom = "text", colour = "white", size = 4,
                 aes(label = ..count..), position=position_stack(vjust=0.5))+
@@ -107,7 +124,7 @@ df %>% filter(outcome==1) %>% select(PATIENT_ID, age, gender)  %>% distinct() %>
 
 
 # Wykres zmienny w czasie
-```{r time chart, cache=TRUE, echo=FALSE, warning = FALSE, message=FALSE}
+```{r time chart, cache=TRUE, warning = FALSE, message=FALSE}
 p <- df %>%
   select(RE_DATE, gender, Lactate.dehydrogenase) %>%
   drop_na() %>%
@@ -134,7 +151,7 @@ p %>%
 
 # Korelacja między atrybutami
 
-```{r echo=FALSE, warning = FALSE, message=FALSE}
+```{r warning = FALSE, message=FALSE}
 cols = colnames(select_if(df, is.numeric))
 corrs <- data.frame(col1=character(), col2=character(), coef=numeric())
 i <- 0
@@ -159,7 +176,7 @@ corrs <- corrs %>%
 
 ```
 
-```{r echo=FALSE,message=FALSE, warning=FALSE}
+```{r message=FALSE, warning=FALSE}
 all_pairs <- corrs %>% group_by(col1,col2)%>% mutate(pairs=list(c(col1,col2,round(coef, 2))), .keep="used") %>% ungroup() %>% select(pairs)
 all_pairs <- as.list(all_pairs)[[1]]
 for (pair in all_pairs){
@@ -187,7 +204,7 @@ for (pair in all_pairs){
 ```{r}
 df %>% select(PATIENT_ID, outcome, Lactate.dehydrogenase) %>% drop_na() %>% group_by(PATIENT_ID) %>% mutate(LDH=mean(Lactate.dehydrogenase)) %>% ungroup() %>% select(PATIENT_ID, outcome, LDH) %>% distinct() %>% group_by(outcome) %>% mutate(LDH_mean = mean(LDH), outcome = ifelse(outcome==1, "martwi", "żyjący")) %>% ungroup() %>%
   ggplot(aes(x=LDH)) +
-  geom_histogram(binwidth = 50)+
+  geom_histogram(binwidth = 50, fill="#FFBEBB")+
     geom_vline(
       aes(xintercept = LDH_mean),
       color = "black",
@@ -201,7 +218,7 @@ df %>% select(PATIENT_ID, outcome, Lactate.dehydrogenase) %>% drop_na() %>% grou
 ```{r}
 df %>% select(PATIENT_ID, outcome, `(%)lymphocyte`) %>% drop_na() %>% group_by(PATIENT_ID) %>% mutate(limfocyty=mean(`(%)lymphocyte`)) %>% ungroup() %>% select(PATIENT_ID, outcome, limfocyty) %>% distinct() %>% group_by(outcome) %>% mutate(mean = mean(limfocyty), outcome = ifelse(outcome==1, "martwi", "żyjący")) %>% ungroup() %>%
   ggplot(aes(x=limfocyty)) +
-  geom_histogram(binwidth = 2)+
+  geom_histogram(binwidth = 2, fill="#FFBEBB")+
     geom_vline(
       aes(xintercept = mean),
       color = "black",
@@ -215,7 +232,7 @@ df %>% select(PATIENT_ID, outcome, `(%)lymphocyte`) %>% drop_na() %>% group_by(P
 ```{r}
 df %>% select(PATIENT_ID, outcome, `High.sensitivity.C-reactive.protein`) %>% drop_na() %>% group_by(PATIENT_ID) %>% mutate(hs_CRP=mean(`High.sensitivity.C-reactive.protein`)) %>% ungroup() %>% select(PATIENT_ID, outcome, hs_CRP) %>% distinct() %>% group_by(outcome) %>% mutate(mean = mean(hs_CRP), outcome = ifelse(outcome==1, "martwi", "żyjący")) %>% ungroup() %>%
   ggplot(aes(x=hs_CRP)) +
-  geom_histogram(binwidth = 9)+
+  geom_histogram(binwidth = 9, fill="#FFBEBB")+
     geom_vline(
       aes(xintercept = mean),
       color = "black",
