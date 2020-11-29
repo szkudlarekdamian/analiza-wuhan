@@ -58,6 +58,24 @@ Z powyższych zestawień można wyciągnąć wiele wniosków m.in.
 * atrybutami bez brakujących wartości są: `PATIENT_ID`, `age`, `gender`, `outcome`, `Admission time` i `Discharge time`,
 * większość atrybutów jest kompletna w 10% ± 5%,
 * atrybut `2019-nCoV.nucleic.acid.detection` składa się w 92% z wartości pustych, pozostałe 8% to stała wartość -1
+* pierwsze badania na pacjentach przeprowadzono 10 stycznia o godzinie 19:45, a ostatnie 18 lutego o godzinie 17:49,
+* pierwszy pacjent został przyjęty na oddział 10 lutego o godzinie 15:52, a ostatni 17 lutego o 21:30,
+* 23 stycznia o 09:09 ze szpitala został wypisany pierwszy z chorych, a ostatni 4 marca o 16:21.
+
+
+W zbiorze obecne są zakodowane atrybuty binarne `gender` i `outcome`; płeć o wartości 1 oznacza mężczyznę, a 2 kobietę, z kolei w przypadku etykiety `outcome` 0 oznacza przeżycie pacjenta, a 1 jego śmierć. 
+
+## Kluczowe wskaźniki biomedyczne
+Według [artykułu](https://www.nature.com/articles/s42256-020-0180-7) dołączonego do zestawu danych, kluczowe w szacowaniu tego czy pacjent przeżyje są 3 biomarkery – LDH, limfocyty i hs-CRP.
+
+Lidia Stopyra , lekarz szpitala im. Stefana Żeromskiego w Krakowie [pisze](https://www.mp.pl/covid19/ekspertcovid2019/235796,czy-wzrost-ldh-mozna-uznac-za-parametr-bardziej-czuly-niz-crp-w-przypadku-podejrzenia-infekcji-wirusowej-w-tym-sars-cov-2):
+
+„Zwiększenie wartości LDH ma miejsce w tych infekcjach wirusowych, które przebiegają ze znacznym uszkodzeniem tych komórek, jak np. – ostre wirusowe zapalenia wątroby, mononukleoza zakaźna, zakażenie parwowirusem, COVID-19. […] Zwiększenie stężenia CRP w zakresie 10–100 mg/l jest charakterystyczne dla lokalnych stanów zapalnych, a w zakresie 100–1000 mg/l dla uogólnionych, rozległych stanów zapalnych. W wielu pracach wykazano, że zwiększenie wartości LDH i CRP w infekcjach wirusowych, w tym w infekcji SARS-CoV-2, koreluje zarówno z nasileniem procesów zapalnych i martwiczych, jak i tropizmem wirusa do poszczególnych tkanek, natomiast nie z samym faktem istnienia infekcji wirusowej. Parametry te mają też znaczenie w prognozowaniu rokowania. Na przykład w zakażeniu SARS-CoV-2 wykazano, że zwiększenie CRP >100 mg/l i LDH >245 U/L jest czynnikiem prognostycznym cięższego przebiegu choroby.”
+
+Z kolei Liu et al. doszli w swojej [pracy](https://assets.researchsquare.com/files/rs-40110/v1/78c87491-6f38-4387-8afe-07a080d68e0b.pdf) do wniosku, że hs-CRP jest ważnym wskaźnikiem przy wczesnej prewencji wykrycia stanu zapalnego u pacjentów młodych i w średnim wieku zarażonych COVID-19. Wczesne wykrycie wariacji hs-CRP pozwala ustalić jak poważny będzie przebieg choroby.
+
+Han et. la w [artykule](https://www.researchgate.net/publication/342432180_Lactate_dehydrogenase_an_independent_risk_factor_of_severe_COVID-19_patients_a_retrospective_and_observational_study) podkreśla, że LDH, CRP i limfocyty są silnymi czynnikami ryzyka ciężkiego przebiegu COVID-19. LDH może być bardzo pomocny przy wczesnej detekcji urazów płuc i ciężkich przypadków przebiegu COVID-19. 
+
 
 # Czyszczenie zbioru danych
 Zbiór danych nie jest idealny. Za zupełnie bezwartościowe uznać można wiersze, w których brakuje każdego badania. Takie wiersze można rozpoznać również po tym, że data pobrania krwi (RE_DATE) jest wartością brakującą.
@@ -84,9 +102,12 @@ rowSums(is.na(df)) %>% as.data.frame() %>%
   ylab("wierszy")
 ```
 
+Niekompletne dane mogą okazać się niewystarczające do poprawnej klasyfikacji ciężkich przypadków zachorowań, a badanie atrybutów może okazać się bezowocne z powodu małej liczby próbek.
 
+# Przetwarzanie danych
+TODO: Kilka slowek o przetwarzaniu danych
 
-## Rozkład wykonanych badań na pacjentach
+Każdy pacjent mógł być badany wielokrotnie. Największy odsetek pacjentów było badanych 7 razy, natomiast średnio pacjenci oddawali krew 17 razy. Maksymalnie przeprowadzono 59 testów na jednym pacjencie – jest to przypadek szczególny, znacząco odstający od reszty. Wykres poniżej przedstawia rozkład wykonanych badań na pacjentach.
 ```{r}
 df %>% select(PATIENT_ID) %>% group_by(PATIENT_ID) %>% mutate(howManyTests=n()) %>% distinct() %>% ungroup() %>% select(howManyTests)%>%
   ggplot(aes(x=howManyTests)) +
@@ -102,8 +123,9 @@ df %>% select(PATIENT_ID) %>% group_by(PATIENT_ID) %>% mutate(howManyTests=n()) 
   ylab("przypadków")
 ```
 
+## Liczność pacjentów
+W trakcie eksperymentu przebadanych zostało 361 pacjentów, wśród nich rozróżnić można 149 kobiet i 212 mężczyzn. Liczność pacjentów ze względu na płeć przedstawia poniższy wykres.
 
-## Liczebność pacjentów ze względu na płeć
 ```{r}
 df %>% select(PATIENT_ID, gender) %>% distinct() %>% mutate(gender = ifelse(gender==1, "mężczyzna", "kobieta")) %>%
   rename(`Płeć` = gender) %>%
@@ -115,10 +137,12 @@ df %>% select(PATIENT_ID, gender) %>% distinct() %>% mutate(gender = ifelse(gend
     scale_x_discrete(breaks=NULL) +xlab("")
 ```
 
-## Śmiertelność wśród płci
+## Śmiertelność pacjentów
+Pobyt w szpitalu przeżyła podobna liczba mężczyzn i kobiet, jednakże kobiet w tej grupie było więcej. Znaczną różnicę można zauważyć w przypadku osób zmarłych, w której mężczyźni stanowią grupę dominującą. Śmiertelność wśród płci przedstawiono na następnym wykresie.
+
 ```{r}
 df %>% select(PATIENT_ID, gender, outcome)  %>% distinct() %>% mutate(gender = ifelse(gender==1, "mężczyzna", "kobieta"), outcome = ifelse(outcome==1, "martwi", "żyjący")) %>%
-  rename(`Płeć` = gender) %>%
+  rename(`Płeć` = gender) %>% select(-PATIENT_ID) %>%
   ggplot(aes(x=`Płeć`, fill=`Płeć`)) +
     geom_bar(stat="count", width = 0.6) +
     ylab("przypadków") +
@@ -128,7 +152,8 @@ df %>% select(PATIENT_ID, gender, outcome)  %>% distinct() %>% mutate(gender = i
     scale_x_discrete(breaks=NULL) +xlab("")
 ```
 
-## Rozkład wieku wśród płci
+## Rozkład wieku wśród pacjentów
+Poniżej znajduje się rozkład wieku pacjentów wśród obu płci. 
 ```{r}
 df %>% select(PATIENT_ID, age, gender)  %>% distinct() %>% mutate(gender = ifelse(gender==1, "mężczyzna", "kobieta")) %>%
   rename(`Płeć` = gender) %>%
@@ -144,13 +169,22 @@ df %>% select(PATIENT_ID, age, gender)  %>% distinct() %>% mutate(gender = ifels
     ylab("gęstość")
 ```
 
+Wynika z niego, że większość mężczyzn jest w starszym wieku, przy czym najwięcej należy do grupy 60-70 lat.  
+Najmłodszy mężczyzna ma 19 lat, najstarszy 95. Średnio mężczyźni mają 62 lat.
+
+Kobiety rozbite są na dwie większe grupy wiekowe – duży odsetek z nich ma blisko 35 lub 65 lat, przy czym więcej pacjentek jest w podeszłym wieku.
+Najmłodsza kobieta ma 18 lat, najstarsza 95. Średnio kobiety mają 55 lat.
+
+Średni pacjent, bez względu na płeć ma 59 lat.
 
 ## Liczba śmiertelnych przypadków wśród grup wiekowych
+Pacjenci, którzy nie przeżyli wizyty w omawianym szpitalu stanowią większość. Poniżej ukazane są liczności zmarłych w różnych przedziałach wiekowych.
 ```{r}
 df %>% filter(outcome==1) %>% select(PATIENT_ID, age, gender)  %>% distinct() %>% select(-PATIENT_ID)  %>% 
   mutate(
     gender = ifelse(gender==1, "mężczyzna", "kobieta"),
-    bin = cut(age, quantile(age, probs=seq(0, 1, by=0.2)), labels=c("19-61","62-66","67-71","72-79","80-95"), include.lowest = TRUE)) %>%
+    bin = cut(age, breaks=c(10,20,30,40,50,60,70,80,90,100), labels=c("10-20","21-30","31-40","41-50","51-60","61-70","71-80","81-90","91-100"), include.lowest = TRUE)
+  ) %>%
   rename(`Płeć` = gender) %>%
   ggplot(aes(x=`Płeć`, fill=`Płeć`)) + 
     geom_bar()+
@@ -162,21 +196,27 @@ df %>% filter(outcome==1) %>% select(PATIENT_ID, age, gender)  %>% distinct() %>
 ```
 
 
-# Wykres zmienny w czasie
+
+## Analiza LDH, limfocytów i hs-CRP
+W sekcji [Kluczowe wskaźniki biomedyczne](#kluczowe-wskaźniki-biomedyczne) przytoczone zostały opinie świata nauki na temat tytułowych biomarkerów. 
+Poniżej porównane zostały poziomy tych wskaźników u osób, u których zakażenie koronawirusem zakończyło się śmiercią, z osobami, które przeżyły.
+
+Następny wykres przedstawia zmienne w czasie poziomy LDH, uśrednione na poziomie dnia.
 ```{r time chart, cache=TRUE, warning = FALSE, message=FALSE}
 p <- df %>%
-  select(RE_DATE, gender, Lactate.dehydrogenase) %>%
+  select(RE_DATE, gender, Lactate.dehydrogenase, outcome) %>%
   drop_na() %>%
   mutate(RE_DATE = as.Date(RE_DATE))  %>%
-  group_by(RE_DATE, gender) %>%
+  group_by(RE_DATE, gender, outcome) %>%
   summarise(Lactate.dehydrogenase = mean(Lactate.dehydrogenase)) %>%
-  mutate(gender = ifelse(gender==1, "mężczyzna", "kobieta"))
+  mutate(gender = ifelse(gender==1, "mężczyzna", "kobieta"), outcome = ifelse(outcome==1, "martwi", "żyjący"))
 
   
 p %>%
   rename(`Płeć` = gender) %>%
   ggplot(aes(y=Lactate.dehydrogenase, x=RE_DATE, color = `Płeć`)) +
     geom_line(size=1.05) +
+    facet_grid(rows = vars(outcome)) +
     scale_fill_manual(values=c("#E69F00", "#56B4E9"))+
     labs(x = "data", y = "dehydrogenaza mleczanowa (LDH)") +
     ggtitle("Średni poziom LDH wśród pacjentów badanych w styczniu i lutym") + 
@@ -187,6 +227,62 @@ p %>%
     transition_reveal(RE_DATE)
 
 ```
+
+Kolejny wykres przedstawia rozkład wartości LDH wśród pacjentów. 
+```{r}
+df %>% select(PATIENT_ID, outcome, Lactate.dehydrogenase) %>% drop_na() %>% group_by(PATIENT_ID) %>% mutate(LDH=mean(Lactate.dehydrogenase)) %>% ungroup() %>% select(PATIENT_ID, outcome, LDH) %>% distinct() %>% group_by(outcome) %>% mutate(LDH_mean = mean(LDH), outcome = ifelse(outcome==1, "martwi", "żyjący")) %>% ungroup() %>%
+  ggplot(aes(x=LDH)) +
+  geom_histogram(binwidth = 50, fill="#FFBEBB")+
+    geom_vline(
+      aes(xintercept = LDH_mean),
+      color = "black",
+      linetype = "dashed",
+      size = 1)+
+  facet_wrap(.~outcome)+
+  xlab("dehydrogenaza mleczanowa (LDH)")+
+  ylab("przypadków")
+```
+Warto zauważyć, że pacjenci, którzy przeżyli mieli średnio LDH na poziomie 243 jednostek, a pacjenci, którzy nie przeżyli na poziomie 721 jednostek. 
+Wśród pacjentów z nieśmiertelnym przebiegiem choroby LDH skupiało się głównie zakresie [150-400], pojedyncze przypadki przekraczały 500 jednostek.
+
+Pacjenci, którzy nie przeżyli mieli bardzo szerokie spektrum wartości LDH. Trudno w tym przypadku mówić o tak wyraźnych skupiskach, jednakże większość badanych nie przekraczała granicy 1000 jednostek. W tej mniejszości przekraczającej granicę znalazło się 27 pacjentów, wśród których 3 miało LDH na poziomie 1867.
+
+TODO!!!
+
+```{r}
+df %>% select(PATIENT_ID, outcome, `(%)lymphocyte`) %>% drop_na() %>% group_by(PATIENT_ID) %>% mutate(limfocyty=mean(`(%)lymphocyte`)) %>% ungroup() %>% select(PATIENT_ID, outcome, limfocyty) %>% distinct() %>% group_by(outcome) %>% mutate(mean = mean(limfocyty), outcome = ifelse(outcome==1, "martwi", "żyjący")) %>% ungroup() %>%
+  ggplot(aes(x=limfocyty)) +
+  geom_histogram(binwidth = 2, fill="#FFBEBB")+
+    geom_vline(
+      aes(xintercept = mean),
+      color = "black",
+      linetype = "dashed",
+      size = 1)+
+  facet_wrap(.~outcome)+
+  xlab("limfocyty (%)")+
+  ylab("przypadków")
+```
+
+```{r}
+df %>% select(PATIENT_ID, outcome, `High.sensitivity.C-reactive.protein`) %>% drop_na() %>% group_by(PATIENT_ID) %>% mutate(hs_CRP=mean(`High.sensitivity.C-reactive.protein`)) %>% ungroup() %>% select(PATIENT_ID, outcome, hs_CRP) %>% distinct() %>% group_by(outcome) %>% mutate(mean = mean(hs_CRP), outcome = ifelse(outcome==1, "martwi", "żyjący")) %>% ungroup() %>%
+  ggplot(aes(x=hs_CRP)) +
+  geom_histogram(binwidth = 9, fill="#FFBEBB")+
+    geom_vline(
+      aes(xintercept = mean),
+      color = "black",
+      linetype = "dashed",
+      size = 1)+
+  facet_wrap(.~outcome)+
+  xlab("hs-CRP")+
+  ylab("przypadków")
+```
+
+
+
+
+
+
+
 
 # Korelacja między atrybutami
 
@@ -240,47 +336,6 @@ for (pair in all_pairs){
 }
 ```
 
-```{r}
-df %>% select(PATIENT_ID, outcome, Lactate.dehydrogenase) %>% drop_na() %>% group_by(PATIENT_ID) %>% mutate(LDH=mean(Lactate.dehydrogenase)) %>% ungroup() %>% select(PATIENT_ID, outcome, LDH) %>% distinct() %>% group_by(outcome) %>% mutate(LDH_mean = mean(LDH), outcome = ifelse(outcome==1, "martwi", "żyjący")) %>% ungroup() %>%
-  ggplot(aes(x=LDH)) +
-  geom_histogram(binwidth = 50, fill="#FFBEBB")+
-    geom_vline(
-      aes(xintercept = LDH_mean),
-      color = "black",
-      linetype = "dashed",
-      size = 1)+
-  facet_wrap(.~outcome)+
-  xlab("dehydrogenaza mleczanowa (LDH)")+
-  ylab("przypadków")
-```
-
-```{r}
-df %>% select(PATIENT_ID, outcome, `(%)lymphocyte`) %>% drop_na() %>% group_by(PATIENT_ID) %>% mutate(limfocyty=mean(`(%)lymphocyte`)) %>% ungroup() %>% select(PATIENT_ID, outcome, limfocyty) %>% distinct() %>% group_by(outcome) %>% mutate(mean = mean(limfocyty), outcome = ifelse(outcome==1, "martwi", "żyjący")) %>% ungroup() %>%
-  ggplot(aes(x=limfocyty)) +
-  geom_histogram(binwidth = 2, fill="#FFBEBB")+
-    geom_vline(
-      aes(xintercept = mean),
-      color = "black",
-      linetype = "dashed",
-      size = 1)+
-  facet_wrap(.~outcome)+
-  xlab("limfocyty (%)")+
-  ylab("przypadków")
-```
-
-```{r}
-df %>% select(PATIENT_ID, outcome, `High.sensitivity.C-reactive.protein`) %>% drop_na() %>% group_by(PATIENT_ID) %>% mutate(hs_CRP=mean(`High.sensitivity.C-reactive.protein`)) %>% ungroup() %>% select(PATIENT_ID, outcome, hs_CRP) %>% distinct() %>% group_by(outcome) %>% mutate(mean = mean(hs_CRP), outcome = ifelse(outcome==1, "martwi", "żyjący")) %>% ungroup() %>%
-  ggplot(aes(x=hs_CRP)) +
-  geom_histogram(binwidth = 9, fill="#FFBEBB")+
-    geom_vline(
-      aes(xintercept = mean),
-      color = "black",
-      linetype = "dashed",
-      size = 1)+
-  facet_wrap(.~outcome)+
-  xlab("hs-CRP")+
-  ylab("przypadków")
-```
 
 
 ```{r}
