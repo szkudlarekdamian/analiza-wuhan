@@ -5,16 +5,12 @@ date: "17 11 2020"
 output:
   html_document: 
     theme: spacelab
-    highlight: kate
     toc: yes
     toc_float: yes
 ---
-5.Sekcję podsumowującą rozmiar zbioru i podstawowe statystyki.
-6.Szczegółową analizę wartości atrybutów.
 7.Sekcję sprawdzającą korelacje między zmiennymi; sekcja ta powinna zawierać jakąś formę graficznej prezentacji korelacji.
 9.Sekcję próbującą stworzyć klasyfikator przewidujący czy dany pacjent przeżyje (w tej sekcji należy wykorzystać wiedzę z                   pozostałych punktów oraz wykonać dodatkowe czynności, które mogą poprawić trafność predykcji); dobór parametrów modelu oraz                 oszacowanie jego skuteczności powinny zostać wykonane za pomocą techniki podziału zbioru na dane uczące, walidujące i testowe;trafność     klasyfikacji powinna zostać oszacowana na podstawie kliku wybranych (i uzasadnionych) miar oceny klasyfikacji.
 10.Analizę ważności atrybutów najlepszego znalezionego modelu.
-11.Dodatkowo punktowane będzie wykonanie analizy typowej dla danych klinicznych, np. regresji logistycznej wraz z wzięciem pod uwagę czynników zakłócających (ang. confounding factors) lub regresji Coxa (ang. Cox Proportional-Hazards Model).
 ```{r include=FALSE}
 knitr::opts_chunk$set(echo = FALSE)
 ```
@@ -27,7 +23,7 @@ library(dplyr)
 library(tidyr)
 library(ggplot2)
 library(gganimate)
-# library(RColorBrewer)
+library(caret)
 ```
 
 # Wczytanie danych
@@ -242,6 +238,8 @@ df %>% select(PATIENT_ID, outcome, Lactate.dehydrogenase) %>% drop_na() %>% grou
   xlab("dehydrogenaza mleczanowa (LDH)")+
   ylab("przypadków")
 ```
+
+
 Warto zauważyć, że pacjenci, którzy przeżyli mieli średnio LDH na poziomie 243 jednostek, a pacjenci, którzy nie przeżyli na poziomie 721 jednostek. 
 Wśród pacjentów z nieśmiertelnym przebiegiem choroby LDH skupiało się głównie zakresie [150-400], pojedyncze przypadki przekraczały 500 jednostek.
 
@@ -281,9 +279,6 @@ df %>% select(PATIENT_ID, outcome, `High.sensitivity.C-reactive.protein`) %>% dr
 
 
 
-
-
-
 # Korelacja między atrybutami
 
 ```{r warning = FALSE, message=FALSE}
@@ -301,17 +296,22 @@ for (col1 in cols) {
 }
 names(corrs) <- c("col1","col2","coef")
 corrs <- corrs %>%
-  filter(coef<=0.999 & coef>0.85)%>%
+  filter(coef<=0.999 & abs(coef)>0.8)%>%
   group_by(col1,col2)%>%
   mutate(rows=df[c(col1,col2)]%>%drop_na()%>%nrow())%>%
-  filter(rows<6000)%>%
+  filter(rows<6000 & rows > 200)%>%
   ungroup() %>%
-  slice_max(rows,n=10)%>% 
-  slice_max(coef,n=7)
-
+  arrange(desc(rows))%>% head(30) %>% 
+  slice_max(abs(coef),n=10) 
 ```
 
+```{r}
+knitr::kable(corrs)
+```
+
+
 ```{r message=FALSE, warning=FALSE}
+corrs <- corrs[c(2,3,5,6),]
 all_pairs <- corrs %>% group_by(col1,col2)%>% mutate(pairs=list(c(col1,col2,round(coef, 2))), .keep="used") %>% ungroup() %>% select(pairs)
 all_pairs <- as.list(all_pairs)[[1]]
 for (pair in all_pairs){
@@ -325,24 +325,93 @@ for (pair in all_pairs){
     geom_smooth(colour="red", size=0.4) +
     labs(x = pair[2], y = pair[1]) +
     ggtitle(paste(
-      "Atrybuty ",
+      "Atrybuty",
       gsub('\\.',' ',pair[2]),
-      " i ",
+      "i",
       gsub('\\.',' ',pair[1]),
       "\nWspółczynnik korelacji:", pair[3], sep = " ")
       ) + 
     theme_bw(base_size = 12)
-  print(tmp_plt)
+    print(tmp_plt)
 }
 ```
 
+```{r warning=FALSE, message=FALSE}
+merged <- df %>%
+  mutate(RE_DATE = as.Date(RE_DATE)) %>% 
+  group_by(PATIENT_ID, RE_DATE) %>%
+  summarise(across(-(1:4), ~mean(.x, na.rm=TRUE))) %>%
+  ungroup()
+```
+
+
+Jeżeli klasyfikator miałby oprzeć się na trzech atrybutach opisywanych we wcześniejszych sekcjach – LDH, limfocyty i hs-CRP to zbiór danych w obecnej postaci wyglądałby tak:
 
 
 ```{r}
-biomarkers <- df %>% select(Lactate.dehydrogenase, `High.sensitivity.C-reactive.protein`, `(%)lymphocyte`)
-names(biomarkers) <- c("LDH","hs-CRP","lymphocytes")
+biomarkers <- df %>% select(outcome, Lactate.dehydrogenase, `High.sensitivity.C-reactive.protein`, `(%)lymphocyte`)
+names(biomarkers) <- c("outcome","LDH","hs-CRP","lymphocytes")
 biomarkers %>% drop_na()
-biomarkers[!apply(biomarkers, 1, function(x) all(is.na(x))),]
-
 ```
 
+
+Wynika to z tego, że pacjenci mogli mieć badane różne cechy w ciągu dnia o różnych godzinach, tzn. LDH mogło być badane o 9:00, a limfocyty o 14:00. W zbiorze zostało to zapisane w osobnych rekordach, więc te dwa wskaźniki nie zostałyby powiązane i nie trafiłyby na wejście klasyfikatora.
+
+Na potrzeby eksperymentu, badania każdego pacjenta zostały pogrupowane na poziomie dnia, a wartości kolejnych atrybutów zostały uśrednione, co wpływa korzystnie na kompletność danych w każdym rekordzie. W takiej postaci znalezienie wszystkich trzech, kluczowych biomarkerów jest bardziej owocne, tzn. znaleziono 657 wyników.  Liczność badań przedstawicieli obu klas (przeżycie i śmierć) jest stosunkowo zbliżona – 341 badań pacjentów, którzy przeżyli i 316 badań pacjentów, którzy zmarli.
+
+```{r}
+biomarkers <- merged %>% select(outcome, Lactate.dehydrogenase, `High.sensitivity.C-reactive.protein`, `(%)lymphocyte`)
+names(biomarkers) <- c("outcome","LDH","hs-CRP","lymphocytes")
+biomarkers <- biomarkers %>% drop_na()
+biomarkers
+```
+
+
+Podsumowanie danych dla obu klas:
+
+`r knitr::kable(summary(biomarkers[,-1]))` 
+
+Podsumowanie danych dla pacjentów, którzy przeżyli:
+
+`r knitr::kable(summary(biomarkers %>% filter(outcome==0) %>% select(-outcome)))` 
+
+Podsumowanie danych dla pacjentów, którzy zmarli:
+
+`r knitr::kable(summary(biomarkers %>% filter(outcome==1) %>% select(-outcome)))` 
+
+
+# Klasyfikacja
+
+## Podział zbioru
+```{r message=FALSE, warning=FALSE}
+biomarkers$outcome <- factor(biomarkers$outcome)
+
+trainIndexes <- createDataPartition(
+          y = biomarkers$outcome,
+          p = .75,
+          list = FALSE
+        )
+
+training <- biomarkers[trainIndexes,]
+testing  <- biomarkers[-trainIndexes,]
+```
+
+
+## Schemat uczenia
+```{r}
+set.seed(131836)
+ctrl <- trainControl(
+    method = "repeatedcv",
+    number = 10,
+    repeats = 4)
+
+fit <- train(outcome ~ .,
+             data = training,
+             method = "rf",
+             preProc = c("center", "scale"),
+             trControl = ctrl,
+             ntree = 15)
+
+predicted <- predict(fit, newdata = testing)
+confusionMatrix(data = predicted, testing$outcome)
+```
