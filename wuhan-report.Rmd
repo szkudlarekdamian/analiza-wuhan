@@ -8,6 +8,11 @@ output:
     toc: yes
     toc_float: yes
 ---
+<style>
+body {
+text-align: justify}
+</style>
+
 7.Sekcję sprawdzającą korelacje między zmiennymi; sekcja ta powinna zawierać jakąś formę graficznej prezentacji korelacji.
 9.Sekcję próbującą stworzyć klasyfikator przewidujący czy dany pacjent przeżyje (w tej sekcji należy wykorzystać wiedzę z                   pozostałych punktów oraz wykonać dodatkowe czynności, które mogą poprawić trafność predykcji); dobór parametrów modelu oraz                 oszacowanie jego skuteczności powinny zostać wykonane za pomocą techniki podziału zbioru na dane uczące, walidujące i testowe;trafność     klasyfikacji powinna zostać oszacowana na podstawie kliku wybranych (i uzasadnionych) miar oceny klasyfikacji.
 10.Analizę ważności atrybutów najlepszego znalezionego modelu.
@@ -66,7 +71,8 @@ Według [artykułu](https://www.nature.com/articles/s42256-020-0180-7) dołączo
 
 Lidia Stopyra , lekarz szpitala im. Stefana Żeromskiego w Krakowie [pisze](https://www.mp.pl/covid19/ekspertcovid2019/235796,czy-wzrost-ldh-mozna-uznac-za-parametr-bardziej-czuly-niz-crp-w-przypadku-podejrzenia-infekcji-wirusowej-w-tym-sars-cov-2):
 
-„Zwiększenie wartości LDH ma miejsce w tych infekcjach wirusowych, które przebiegają ze znacznym uszkodzeniem tych komórek, jak np. – ostre wirusowe zapalenia wątroby, mononukleoza zakaźna, zakażenie parwowirusem, COVID-19. […] Zwiększenie stężenia CRP w zakresie 10–100 mg/l jest charakterystyczne dla lokalnych stanów zapalnych, a w zakresie 100–1000 mg/l dla uogólnionych, rozległych stanów zapalnych. W wielu pracach wykazano, że zwiększenie wartości LDH i CRP w infekcjach wirusowych, w tym w infekcji SARS-CoV-2, koreluje zarówno z nasileniem procesów zapalnych i martwiczych, jak i tropizmem wirusa do poszczególnych tkanek, natomiast nie z samym faktem istnienia infekcji wirusowej. Parametry te mają też znaczenie w prognozowaniu rokowania. Na przykład w zakażeniu SARS-CoV-2 wykazano, że zwiększenie CRP >100 mg/l i LDH >245 U/L jest czynnikiem prognostycznym cięższego przebiegu choroby.”
+>"Zwiększenie wartości LDH ma miejsce w tych infekcjach wirusowych, które przebiegają ze znacznym uszkodzeniem tych komórek, jak np. – ostre wirusowe zapalenia wątroby, mononukleoza zakaźna, zakażenie parwowirusem, COVID-19. […]
+Zwiększenie stężenia CRP w zakresie 10–100 mg/l jest charakterystyczne dla lokalnych stanów zapalnych, a w zakresie 100–1000 mg/l dla uogólnionych, rozległych stanów zapalnych. W wielu pracach wykazano, że zwiększenie wartości LDH i CRP w infekcjach wirusowych, w tym w infekcji SARS-CoV-2, koreluje zarówno z nasileniem procesów zapalnych i martwiczych, jak i tropizmem wirusa do poszczególnych tkanek, natomiast nie z samym faktem istnienia infekcji wirusowej. Parametry te mają też znaczenie w prognozowaniu rokowania. Na przykład w zakażeniu SARS-CoV-2 wykazano, że zwiększenie CRP >100 mg/l i LDH >245 U/L jest czynnikiem prognostycznym cięższego przebiegu choroby."
 
 Z kolei Liu et al. doszli w swojej [pracy](https://assets.researchsquare.com/files/rs-40110/v1/78c87491-6f38-4387-8afe-07a080d68e0b.pdf) do wniosku, że hs-CRP jest ważnym wskaźnikiem przy wczesnej prewencji wykrycia stanu zapalnego u pacjentów młodych i w średnim wieku zarażonych COVID-19. Wczesne wykrycie wariacji hs-CRP pozwala ustalić jak poważny będzie przebieg choroby.
 
@@ -75,6 +81,7 @@ Han et. la w [artykule](https://www.researchgate.net/publication/342432180_Lacta
 
 # Czyszczenie zbioru danych
 Zbiór danych nie jest idealny. Za zupełnie bezwartościowe uznać można wiersze, w których brakuje każdego badania. Takie wiersze można rozpoznać również po tym, że data pobrania krwi (RE_DATE) jest wartością brakującą.
+
 ```{r echo=TRUE}
 identical(
     df %>% filter(is.na(RE_DATE)),
@@ -86,6 +93,18 @@ Jak widać brak wartości `RE_DATE` wiąże się z brakiem wartości wszystkich 
 ```{r echo=TRUE}
 df <- df %>% filter(!is.na(RE_DATE))
 ```
+
+
+Część rekordów zawiera pewną niespójność dotyczącą czasu badania i czasu zwolnienia pacjenta ze szpitala. Przypadków, w których badanie krwi było wykonane po wypisaniu pacjenta, znalazło się `r nrow(df %>% filter(RE_DATE > Discharge.time))`. 
+
+```{r echo=TRUE, warning=FALSE, message=FALSE}
+df %>% filter(RE_DATE > Discharge.time) %>% select(1:7) %>% head() %>% knitr::kable()
+```
+
+Takie rekordy nie wpływają negatywnie na jakość całego zbioru, ale można je usunąć, żeby dane były bardziej spójne.
+
+<br />
+<br />
 
 Wiele rekordów cechuje się brakiem wartości w większości atrybutów. Zjawisko to przedstawione zostało poniżej.
 
@@ -100,10 +119,11 @@ rowSums(is.na(df)) %>% as.data.frame() %>%
 
 Niekompletne dane mogą okazać się niewystarczające do poprawnej klasyfikacji ciężkich przypadków zachorowań, a badanie atrybutów może okazać się bezowocne z powodu małej liczby próbek.
 
-# Przetwarzanie danych
+# Analiza danych
 TODO: Kilka slowek o przetwarzaniu danych
 
 Każdy pacjent mógł być badany wielokrotnie. Największy odsetek pacjentów było badanych 7 razy, natomiast średnio pacjenci oddawali krew 17 razy. Maksymalnie przeprowadzono 59 testów na jednym pacjencie – jest to przypadek szczególny, znacząco odstający od reszty. Wykres poniżej przedstawia rozkład wykonanych badań na pacjentach.
+
 ```{r}
 df %>% select(PATIENT_ID) %>% group_by(PATIENT_ID) %>% mutate(howManyTests=n()) %>% distinct() %>% ungroup() %>% select(howManyTests)%>%
   ggplot(aes(x=howManyTests)) +
@@ -150,6 +170,7 @@ df %>% select(PATIENT_ID, gender, outcome)  %>% distinct() %>% mutate(gender = i
 
 ## Rozkład wieku wśród pacjentów
 Poniżej znajduje się rozkład wieku pacjentów wśród obu płci. 
+
 ```{r}
 df %>% select(PATIENT_ID, age, gender)  %>% distinct() %>% mutate(gender = ifelse(gender==1, "mężczyzna", "kobieta")) %>%
   rename(`Płeć` = gender) %>%
@@ -173,8 +194,63 @@ Najmłodsza kobieta ma 18 lat, najstarsza 95. Średnio kobiety mają 55 lat.
 
 Średni pacjent, bez względu na płeć ma 59 lat.
 
+## Czas hospitalizacji
+
+Pacjenci nie przebywali w szpitalu przez stały okres czasu. Liczba dni, którą każdy z nich spędził w szpitalu była oczywiście zależna od stanu zdrowia, ale można zauważyć pewne zależności od innych cech. 
+Kolejny wykres przedstawia czas hospitalizacji dla różnych przedziałów wiekowych.
+
+```{r}
+df %>%
+  mutate(
+    days = difftime(
+      as.Date(Discharge.time),
+      as.Date(Admission.time),
+      unit=c("days")),
+    age = cut(
+      age,
+      breaks=c(10,20,30,40,50,60,70,80,90,100),
+      labels=c("10-20","21-30","31-40","41-50","51-60","61-70","71-80","81-90","91-100"),
+      include.lowest = TRUE)
+    ) %>%
+  select(PATIENT_ID, age, days) %>% distinct() %>%
+  ggplot(aes(x=age, y=days)) +
+  geom_boxplot() +
+  scale_y_continuous() +
+  xlab("wiek") + ylab("czas hospitalizacji (dni)")
+```
+
+Większość pacjentów przebywała w szpitalu w ciągłym zakresie dni, ale w niektórych grupach wiekowych obecne są przypadki odstające.
+<br/>
+<br/>
+
+Następny wykres ilustruje podobną zależność, lecz teraz czas hospitalizacji zestawiony został ze śmiertelnością.
+ 
+```{r}
+df %>%
+  mutate(
+    days = difftime(
+      as.Date(Discharge.time),
+      as.Date(Admission.time),
+      unit=c("days")),
+    outcome = ifelse(outcome==1, "martwi", "żyjący")
+    ) %>%
+  select(PATIENT_ID, outcome, days) %>% distinct() %>%
+  ggplot(aes(x=as.factor(outcome), y=days)) +
+  geom_violin() +
+  scale_y_continuous() +
+  xlab("status") + ylab("czas hospitalizacji (dni)")
+```
+
+Pacjenci, którzy zmarli w szpitalu, statystycznie spędzili w nim około tydzień, zapewne z powodu ciężkiego przebiegu choroby. Na wykresie widać też niemałe skupisko przypadków, którzy byli hospitalizowani blisko miesiąc.
+
+Większość osób, która przeżyła, spędziła w szpitalu dwa tygodnie lub mniej. Znacznie mniejsza część pacjentów była hospitalizowana ponad 20 dni.
+
+
+
 ## Liczba śmiertelnych przypadków wśród grup wiekowych
+
 Pacjenci, którzy nie przeżyli wizyty w omawianym szpitalu stanowią większość. Poniżej ukazane są liczności zmarłych w różnych przedziałach wiekowych.
+
 ```{r}
 df %>% filter(outcome==1) %>% select(PATIENT_ID, age, gender)  %>% distinct() %>% select(-PATIENT_ID)  %>% 
   mutate(
@@ -198,6 +274,7 @@ W sekcji [Kluczowe wskaźniki biomedyczne](#kluczowe-wskaźniki-biomedyczne) prz
 Poniżej porównane zostały poziomy tych wskaźników u osób, u których zakażenie koronawirusem zakończyło się śmiercią, z osobami, które przeżyły.
 
 Następny wykres przedstawia zmienne w czasie poziomy LDH, uśrednione na poziomie dnia.
+
 ```{r time chart, cache=TRUE, warning = FALSE, message=FALSE}
 p <- df %>%
   select(RE_DATE, gender, Lactate.dehydrogenase, outcome) %>%
@@ -224,7 +301,8 @@ p %>%
 
 ```
 
-Kolejny wykres przedstawia rozkład wartości LDH wśród pacjentów. 
+Kolejny wykres przedstawia histogram wartości LDH wśród pacjentów. 
+
 ```{r}
 df %>% select(PATIENT_ID, outcome, Lactate.dehydrogenase) %>% drop_na() %>% group_by(PATIENT_ID) %>% mutate(LDH=mean(Lactate.dehydrogenase)) %>% ungroup() %>% select(PATIENT_ID, outcome, LDH) %>% distinct() %>% group_by(outcome) %>% mutate(LDH_mean = mean(LDH), outcome = ifelse(outcome==1, "martwi", "żyjący")) %>% ungroup() %>%
   ggplot(aes(x=LDH)) +
@@ -244,8 +322,9 @@ Warto zauważyć, że pacjenci, którzy przeżyli mieli średnio LDH na poziomie
 Wśród pacjentów z nieśmiertelnym przebiegiem choroby LDH skupiało się głównie zakresie [150-400], pojedyncze przypadki przekraczały 500 jednostek.
 
 Pacjenci, którzy nie przeżyli mieli bardzo szerokie spektrum wartości LDH. Trudno w tym przypadku mówić o tak wyraźnych skupiskach, jednakże większość badanych nie przekraczała granicy 1000 jednostek. W tej mniejszości przekraczającej granicę znalazło się 27 pacjentów, wśród których 3 miało LDH na poziomie 1867.
-
-TODO!!!
+<br/>
+<br/>
+Kolejny wykres przedstawia histogram wartości procentowych limfocytów wśród pacjentów. 
 
 ```{r}
 df %>% select(PATIENT_ID, outcome, `(%)lymphocyte`) %>% drop_na() %>% group_by(PATIENT_ID) %>% mutate(limfocyty=mean(`(%)lymphocyte`)) %>% ungroup() %>% select(PATIENT_ID, outcome, limfocyty) %>% distinct() %>% group_by(outcome) %>% mutate(mean = mean(limfocyty), outcome = ifelse(outcome==1, "martwi", "żyjący")) %>% ungroup() %>%
@@ -261,6 +340,13 @@ df %>% select(PATIENT_ID, outcome, `(%)lymphocyte`) %>% drop_na() %>% group_by(P
   ylab("przypadków")
 ```
 
+W prawej sekcji, przedstawiającej poziomy limfocytów u ozdrowieńców, można zauważyć, że rozkład wartości nie był skupiony w jednym miejscu. Pacjenci wykazywali się odpornością na różnym poziomie.
+
+Odwrotne wnioski można wysunąć u przypadków śmiertelnych,  wśród których wartości limfocytów były skupione w okolicy 5%. Zdecydowana większość badań wykazała poziom limfocytów poniżej 20%.
+<br/>
+<br/>
+Na następnym wykresie znajduje się histogram wartości markera hs-CRP.
+
 ```{r}
 df %>% select(PATIENT_ID, outcome, `High.sensitivity.C-reactive.protein`) %>% drop_na() %>% group_by(PATIENT_ID) %>% mutate(hs_CRP=mean(`High.sensitivity.C-reactive.protein`)) %>% ungroup() %>% select(PATIENT_ID, outcome, hs_CRP) %>% distinct() %>% group_by(outcome) %>% mutate(mean = mean(hs_CRP), outcome = ifelse(outcome==1, "martwi", "żyjący")) %>% ungroup() %>%
   ggplot(aes(x=hs_CRP)) +
@@ -275,11 +361,17 @@ df %>% select(PATIENT_ID, outcome, `High.sensitivity.C-reactive.protein`) %>% dr
   ylab("przypadków")
 ```
 
+Kolejny raz, zauważyć można podobne kształty histogramów.
 
+Niskie poziomy hs-CRP świadczą o braku wyraźnej infekcji i stanu zapalnego, stąd u pacjentów z mniej poważnym przypadkiem zachorowania na COVID-19, wartości tego wskaźnika są skupione i oscylują bliżej dolnej granicy.
 
-
+Pacjenci, którzy zginęli w wyniku zachorowania na koronawirusa, przejawiali wysokie wartości hs-CRP, ale trudno określić jednoznaczne skupienie wartości.
 
 # Korelacja między atrybutami
+
+Fakt, że wzrost jednego wskaźnika idzie w parze ze wzrostem lub spadkiem innego wskaźnika nie jest szokujący. Szczególnie, że niektóre biomarkery występują w dwóch jednostkach – mierzymy procentowy poziom limfocytów, ale osobno podajemy też ich liczność.
+
+Poniższa tabela przedstawia pary wskaźników, które są najbardziej ze sobą skorelowane (według miary Pearsona). Atrybut `rows` przedstawia liczbę badań, w których występują oba wskaźniki – jest on brany pod uwagę, po to by wyeliminować wskaźniki o wysokiej korelacji przy bardzo niskiej liczbie próbek. 
 
 ```{r warning = FALSE, message=FALSE}
 cols = colnames(select_if(df, is.numeric))
@@ -309,8 +401,13 @@ corrs <- corrs %>%
 knitr::kable(corrs)
 ```
 
+<br/>
 
-```{r message=FALSE, warning=FALSE}
+Niektóre z powyższych rekordów zostały przedstawione w formie wykresów poniżej.
+
+<br/>
+
+```{r message=FALSE, warning=FALSE, fig.width=8, fig.height=4}
 corrs <- corrs[c(2,3,5,6),]
 all_pairs <- corrs %>% group_by(col1,col2)%>% mutate(pairs=list(c(col1,col2,round(coef, 2))), .keep="used") %>% ungroup() %>% select(pairs)
 all_pairs <- as.list(all_pairs)[[1]]
@@ -333,10 +430,28 @@ for (pair in all_pairs){
       ) + 
     theme_bw(base_size = 12)
     print(tmp_plt)
+    cat("\n\n\n\n\n\n")
 }
 ```
 
-```{r warning=FALSE, message=FALSE}
+
+# Klasyfikacja
+Jeżeli klasyfikator miałby oprzeć się na trzech atrybutach opisywanych we wcześniejszych sekcjach – LDH, limfocyty i hs-CRP to zbiór danych w obecnej postaci wyglądałby tak:
+
+
+```{r}
+
+biomarkers <- df %>% select(outcome, Lactate.dehydrogenase, `High.sensitivity.C-reactive.protein`, `(%)lymphocyte`)
+names(biomarkers) <- c("outcome","LDH","hs-CRP","lymphocytes")
+biomarkers %>% drop_na() %>% knitr::kable()
+```
+
+Wynika to z tego, że pacjenci mogli mieć badane różne cechy w ciągu dnia o różnych godzinach, tzn. LDH mogło być badane o 9:00, a limfocyty o 14:00. W zbiorze zostało to zapisane w osobnych rekordach, więc te dwa wskaźniki nie zostałyby powiązane i nie trafiłyby na wejście klasyfikatora.
+<br/>
+<br/>
+Na potrzeby eksperymentu, badania każdego pacjenta zostały pogrupowane na poziomie dnia, a wartości kolejnych atrybutów zostały uśrednione, co wpływa korzystnie na kompletność danych w każdym rekordzie. 
+
+```{r echo=TRUE, warning=FALSE, message=FALSE}
 merged <- df %>%
   mutate(RE_DATE = as.Date(RE_DATE)) %>% 
   group_by(PATIENT_ID, RE_DATE) %>%
@@ -344,26 +459,15 @@ merged <- df %>%
   ungroup()
 ```
 
-
-Jeżeli klasyfikator miałby oprzeć się na trzech atrybutach opisywanych we wcześniejszych sekcjach – LDH, limfocyty i hs-CRP to zbiór danych w obecnej postaci wyglądałby tak:
-
-
-```{r}
-biomarkers <- df %>% select(outcome, Lactate.dehydrogenase, `High.sensitivity.C-reactive.protein`, `(%)lymphocyte`)
-names(biomarkers) <- c("outcome","LDH","hs-CRP","lymphocytes")
-biomarkers %>% drop_na()
-```
-
-
-Wynika to z tego, że pacjenci mogli mieć badane różne cechy w ciągu dnia o różnych godzinach, tzn. LDH mogło być badane o 9:00, a limfocyty o 14:00. W zbiorze zostało to zapisane w osobnych rekordach, więc te dwa wskaźniki nie zostałyby powiązane i nie trafiłyby na wejście klasyfikatora.
-
-Na potrzeby eksperymentu, badania każdego pacjenta zostały pogrupowane na poziomie dnia, a wartości kolejnych atrybutów zostały uśrednione, co wpływa korzystnie na kompletność danych w każdym rekordzie. W takiej postaci znalezienie wszystkich trzech, kluczowych biomarkerów jest bardziej owocne, tzn. znaleziono 657 wyników.  Liczność badań przedstawicieli obu klas (przeżycie i śmierć) jest stosunkowo zbliżona – 341 badań pacjentów, którzy przeżyli i 316 badań pacjentów, którzy zmarli.
+W takiej postaci znalezienie wszystkich trzech, kluczowych biomarkerów jest bardziej owocne, tzn. znaleziono 657 wyników.  Liczność badań przedstawicieli obu klas (przeżycie i śmierć) jest stosunkowo zbliżona – 341 badań pacjentów, którzy przeżyli i 316 badań pacjentów, którzy zmarli.
 
 ```{r}
 biomarkers <- merged %>% select(outcome, Lactate.dehydrogenase, `High.sensitivity.C-reactive.protein`, `(%)lymphocyte`)
 names(biomarkers) <- c("outcome","LDH","hs-CRP","lymphocytes")
-biomarkers <- biomarkers %>% drop_na()
-biomarkers
+biomarkers <- biomarkers %>% drop_na() %>% mutate(outcome = ifelse(outcome==0, "przeżycie", "śmierć"))
+biomarkers$outcome <- as.factor(biomarkers$outcome)
+levels(biomarkers$outcome) <- c("przeżycie", "śmierć")
+knitr::kable(biomarkers %>% head(10))
 ```
 
 
@@ -380,12 +484,11 @@ Podsumowanie danych dla pacjentów, którzy zmarli:
 `r knitr::kable(summary(biomarkers %>% filter(outcome==1) %>% select(-outcome)))` 
 
 
-# Klasyfikacja
-
 ## Podział zbioru
-```{r message=FALSE, warning=FALSE}
-biomarkers$outcome <- factor(biomarkers$outcome)
 
+Zbiory treningowe i testowy zostały podzielone w stosunku 75:25.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
 trainIndexes <- createDataPartition(
           y = biomarkers$outcome,
           p = .75,
@@ -397,9 +500,18 @@ testing  <- biomarkers[-trainIndexes,]
 ```
 
 
-## Schemat uczenia
-```{r}
+## Model
+
+Model treningowy, na którym oparta zostanie predykcja przeżycia pacjenta to Random Forest.
+
+Schematem uczenia jest dziesięciokrotna walidacja krzyżowa z czterema powtórzeniami.
+
+Random Forest uczy się na danych treningowych i automatycznie optymalizuje wartość `mtry` do wartości 3. Parametr `ntree` został dobrany holistycznie.
+
+
+```{r echo=TRUE, message==FALSE}
 set.seed(131836)
+
 ctrl <- trainControl(
     method = "repeatedcv",
     number = 10,
@@ -411,7 +523,37 @@ fit <- train(outcome ~ .,
              preProc = c("center", "scale"),
              trControl = ctrl,
              ntree = 15)
+fit
+```
+## Predykcja
 
+```{r echo=TRUE}
 predicted <- predict(fit, newdata = testing)
-confusionMatrix(data = predicted, testing$outcome)
+confMatrix <- confusionMatrix(data = predicted, testing$outcome)
+```
+
+Macierz pomyłek:
+
+`r knitr::kable(confMatrix$table, format = "html", table.attr = "style='width:40%;'")`
+
+
+<br/>
+9 próbek zostało źle przypisanych do klas, co przy 164 przypadkach oznacza dokładność na poziomie `r round(confMatrix$overall[[1]],4)*100`%.
+Miara Kappa przyjmuje wartość równą `r round(confMatrix$overall[[2]],4)*100`%.
+<br/>
+
+Pozostałe miary ewaluacji zwrócone przez model:
+
+```{r}
+as.data.frame(confMatrix$byClass) %>%
+   tibble::rownames_to_column() %>%
+   gather(var, value, -rowname) %>% 
+   select(-var)  %>%
+  ggplot() +
+  geom_col(aes(x = rowname, y = value)) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 0.85, vjust=1))+
+  geom_text(aes(x=rowname, y=value, label = paste(round(value,3)*100, "%", sep="")), colour = "white", size = 4,
+                position=position_stack(vjust=0.5))+
+  xlab("") + ylab("") + scale_y_continuous(breaks=NULL)
+importance(fit)
 ```
