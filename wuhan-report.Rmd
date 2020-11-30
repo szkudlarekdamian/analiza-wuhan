@@ -1,7 +1,7 @@
 ---
-title: "Projekt"
+title: "Analiza próbek krwi pacjentów chorych na COVID-19"
 author: "Damian Szkudlarek"
-date: "17 11 2020"
+date: "`r format(Sys.time(), '%d.%m.%Y r.')`"
 output:
   html_document: 
     theme: spacelab
@@ -13,12 +13,37 @@ body {
 text-align: justify}
 </style>
 
-7.Sekcję sprawdzającą korelacje między zmiennymi; sekcja ta powinna zawierać jakąś formę graficznej prezentacji korelacji.
-9.Sekcję próbującą stworzyć klasyfikator przewidujący czy dany pacjent przeżyje (w tej sekcji należy wykorzystać wiedzę z                   pozostałych punktów oraz wykonać dodatkowe czynności, które mogą poprawić trafność predykcji); dobór parametrów modelu oraz                 oszacowanie jego skuteczności powinny zostać wykonane za pomocą techniki podziału zbioru na dane uczące, walidujące i testowe;trafność     klasyfikacji powinna zostać oszacowana na podstawie kliku wybranych (i uzasadnionych) miar oceny klasyfikacji.
-10.Analizę ważności atrybutów najlepszego znalezionego modelu.
 ```{r include=FALSE}
 knitr::opts_chunk$set(echo = FALSE)
 ```
+
+# Podsumowanie
+Zestaw danych to 6120 badań krwi. Każde badanie reprezentowane jest przez 81 atrybutów, z których 7 dotyczy okoliczności badania i pacjenta, a 74 dotyczy samego badania tzn. poziomy wskaźników medycznych.
+Każdy pacjent mógł być badany wielokrotnie. Największy odsetek pacjentów było badanych 7 razy, natomiast średnio pacjenci oddawali krew 17 razy.
+
+Tylko 96 rekordów zawiera mniej niż 50 wartości pustych w atrybutach. Oznacza to, że 99.98% rekordów w zbiorze zawiera 50 lub więcej wartości pustych.  Zdecydowaną większość badań cechuje nawet ponad 70 z 81 atrybutów pustych. Takie zjawisko utrudnia analizę danych, wymaga uważnego przetwarzania i naraża analityka na ryzyko dojścia do błędnych konkluzji.
+
+
+Wśród pacjentów większość stanowili mężczyźni. Również mężczyźni stanowili największy odsetek śmiertelnych przypadków w badanej populacji.
+Pacjenci przyjęci na oddział szpitalu w Wuhan to w większości osoby starsze.  Osoby starsze również, częściej umierały. Podgrupą stanowiącą największy odsetek osób zmarłych są mężczyźni w przedziale wiekowym 61-70 lat.
+
+Pacjenci, którzy przeżyli zakażenie wirusem byli dłużej hospitalizowani, niż osoby które zmarły wskutek zakażenia.  Największą różnorodnością w długości przebywania w szpitalu miały osoby w wieku 51-60 lat.
+
+
+W sekcji [Kluczowe wskaźniki biomedyczne](#kluczowe-wskaźniki-biomedyczne) przybliżone zostały trzy biomarkery, które w wielu źródłach medycznych są nazywane kluczowymi. 
+Te wskaźniki to dehydrogenaza mleczanowa (LDH), poziom limfocytów oraz wysokoczułe białko C-reaktywne (hs-CRP).
+Na podstawie ich poziomu można z wyprzedzeniem wskazać czy pacjent zarażony wirusem SARS-CoV-2 przejdzie COVID-19 z ciężkimi objawami (możliwie śmiertelnymi), czy też nie.
+Wiedza ta, ma za zadanie umożliwić personelowi medycznemu przyznawania pierwszeństwa zasobów ludzkich i sprzętowych osobom z największym zagrożeniem życia.  
+
+
+W raporcie w sekcji [Analiza LDH, limfocytów i hs-CRP](#analiza-ldh-limfocytów-i-hs-crp) potwierdzono istotność tych wskaźników medycznych. Histogramy ich wartości obrazują różnice w poziomach, między późniejszymi ozdrowieńcami i denatami. 
+
+
+Między atrybutami zauważalne były korelacje, ale te najsilniejsze są takie z powodów oczywistych dla osoby z podstawowym wykształceniem medycznym. W sekcji dotyczącej [korelacji](#korelacja-miedzy-atrybutami) nie zdefiniowano żadnych wniosków, bo niestety żadne nie są widoczne.
+
+
+Na potrzeby raportu, został zaprojektowany klasyfikator typu `Random Forest`. Model samoczynnie zoptymalizował najbardziej kluczowe elementy. Zestaw danych treningowych i testowych stanowiły oczyszczone z szumu dane wejściowe raportu. Jako zbiór atrybutów do klasyfikacji posłużyły trzy omawiane wcześniej biomarkery. Dokładność predykcji wynosi 94%.
+
 
 # Biblioteki
 ```{r setup, echo=TRUE, warning = FALSE, message=FALSE}
@@ -44,6 +69,11 @@ set.seed(131836)
 ```
 
 # Opis danych
+
+>Od początku 2020 r. dziesiątki milionów osób zakaziło się wirusem SARS-CoV-2 i ponad milion osób zmarło na chorobę COVID-19 wywołaną tym wirusem. Naukowcy wciąż analizują budowę i właściwości wirusa oraz reakcje organizmu ludzkiego na zarażenie, aby móc lepiej kontrolować rozprzestrzenianie się choroby, projektować szczepionki na SARS-CoV-2 i leki pomagające zwalczać objawy COVID-19. W tym celu zbierane są dane o budowie wirusa na poziomie molekularnym, wykonywane są mikro- i makro-symulacje rozprzestrzeniania się choroby, a także pobierane są próbki krwi chorych. Właśnie próbki krwi pacjentów są punktem wyjścia do niniejszego projektu.
+
+>Dane zostały zebrane między 10. stycznia a 18. lutego 2020 i zawierają informacje o wynikach badań krwi pacjentów przyjętych do szpitala Tongji w Wuhan (Chiny). Sposób zbierania danych oraz podstawowe statystyki zbioru zostały opisane w artykule Tan et al. Dane dane do projektu dostępne są pod adresem: http://www.cs.put.poznan.pl/dbrzezinski/teaching/zed/wuhan_blood_sample_data_Jan_Feb_2020.xlsx. Celem projektu jest analiza i wizualizacja tych danych w poszukiwaniu interesujących zależności.
+
 ```{r warning=FALSE}
 df <- df %>%  rename(NT_proBNP = `Amino-terminal.brain.natriuretic.peptide.precursor(NT-proBNP)`)
 my_skim <- skim_with(numeric = sfl(hist = NULL, p25=NULL, p50=NULL))
@@ -120,7 +150,6 @@ rowSums(is.na(df)) %>% as.data.frame() %>%
 Niekompletne dane mogą okazać się niewystarczające do poprawnej klasyfikacji ciężkich przypadków zachorowań, a badanie atrybutów może okazać się bezowocne z powodu małej liczby próbek.
 
 # Analiza danych
-TODO: Kilka slowek o przetwarzaniu danych
 
 Każdy pacjent mógł być badany wielokrotnie. Największy odsetek pacjentów było badanych 7 razy, natomiast średnio pacjenci oddawali krew 17 razy. Maksymalnie przeprowadzono 59 testów na jednym pacjencie – jest to przypadek szczególny, znacząco odstający od reszty. Wykres poniżej przedstawia rozkład wykonanych badań na pacjentach.
 
@@ -374,6 +403,7 @@ Fakt, że wzrost jednego wskaźnika idzie w parze ze wzrostem lub spadkiem inneg
 Poniższa tabela przedstawia pary wskaźników, które są najbardziej ze sobą skorelowane (według miary Pearsona). Atrybut `rows` przedstawia liczbę badań, w których występują oba wskaźniki – jest on brany pod uwagę, po to by wyeliminować wskaźniki o wysokiej korelacji przy bardzo niskiej liczbie próbek. 
 
 ```{r warning = FALSE, message=FALSE}
+# WIEM JAK BRZYDKIE TO JEST. NA SAMYM DOLE ZROBIŁEM KORELACJE ŁADNIEJ. PROSZĘ O WYBACZENIE!
 cols = colnames(select_if(df, is.numeric))
 corrs <- data.frame(col1=character(), col2=character(), coef=numeric())
 i <- 0
@@ -436,13 +466,18 @@ for (pair in all_pairs){
 
 
 # Klasyfikacja
+Na potrzeby klasyfikacji etykieta `outcome` zostanie przemianowana na `danger`, po to aby etykieta dostarczona modelowi odpowiadała wyraźniej na pytanie tak/nie. Zadawanym pytanie ma być „Czy istnieje zagrożenie życia?”.
+
+
 Jeżeli klasyfikator miałby oprzeć się na trzech atrybutach opisywanych we wcześniejszych sekcjach – LDH, limfocyty i hs-CRP to zbiór danych w obecnej postaci wyglądałby tak:
 
 
 ```{r}
 
 biomarkers <- df %>% select(outcome, Lactate.dehydrogenase, `High.sensitivity.C-reactive.protein`, `(%)lymphocyte`)
-names(biomarkers) <- c("outcome","LDH","hs_CRP","lymphocytes")
+names(biomarkers) <- c("danger","LDH","hs_CRP","lymphocytes")
+biomarkers$danger <- as.factor(biomarkers$danger)
+levels(biomarkers$danger) <- c("no", "yes")
 biomarkers %>% drop_na() %>% knitr::kable()
 ```
 
@@ -467,12 +502,15 @@ biomarkers <- merged %>% select(outcome,
                                 `High.sensitivity.C-reactive.protein`,
                                 `(%)lymphocyte`
                                 ) %>% 
-  rename(`LDH`=Lactate.dehydrogenase, `hs_CRP`=`High.sensitivity.C-reactive.protein`, `lymphocytes`=`(%)lymphocyte`) %>%
-# names(biomarkers) <- c("outcome","LDH","hs-CRP","lymphocytes")
-# biomarkers <- biomarkers %>% 
-  drop_na() %>% mutate(outcome = ifelse(outcome==0, "przeżycie", "śmierć"))
-biomarkers$outcome <- as.factor(biomarkers$outcome)
-levels(biomarkers$outcome) <- c("przeżycie", "śmierć")
+  rename(
+    `danger`=`outcome`,
+    `LDH`=Lactate.dehydrogenase,
+    `hs_CRP`=`High.sensitivity.C-reactive.protein`,
+    `lymphocytes`=`(%)lymphocyte`
+    ) %>%
+  drop_na()
+biomarkers$danger <- as.factor(biomarkers$danger)
+levels(biomarkers$danger) <- c("no", "yes")
 knitr::kable(biomarkers %>% head(10))
 ```
 
@@ -483,11 +521,11 @@ Podsumowanie danych dla obu klas:
 
 Podsumowanie danych dla pacjentów, którzy przeżyli:
 
-`r knitr::kable(summary(biomarkers %>% filter(outcome==0) %>% select(-outcome)))` 
+`r knitr::kable(summary(biomarkers %>% filter(danger=="no") %>% select(-danger)))` 
 
 Podsumowanie danych dla pacjentów, którzy zmarli:
 
-`r knitr::kable(summary(biomarkers %>% filter(outcome==1) %>% select(-outcome)))` 
+`r knitr::kable(summary(biomarkers %>% filter(danger=="yes") %>% select(-danger)))` 
 
 
 ## Podział zbioru
@@ -496,7 +534,7 @@ Zbiory treningowe i testowy zostały podzielone w stosunku 75:25.
 
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
 trainIndexes <- createDataPartition(
-          y = biomarkers$outcome,
+          y = biomarkers$danger,
           p = .75,
           list = FALSE
         )
@@ -523,7 +561,7 @@ ctrl <- trainControl(
     number = 10,
     repeats = 4)
 
-fit <- train(outcome ~ .,
+fit <- train(danger ~ .,
              data = training,
              method = "rf",
              preProc = c("center", "scale"),
@@ -535,7 +573,7 @@ fit
 
 ```{r echo=TRUE}
 predicted <- predict(fit, newdata = testing)
-confMatrix <- confusionMatrix(data = predicted, testing$outcome)
+confMatrix <- confusionMatrix(data = predicted, testing$danger)
 ```
 
 Macierz pomyłek:
@@ -564,12 +602,22 @@ as.data.frame(confMatrix$byClass) %>%
 varImp(fit)
 ```
 
+## Future work
+
+Poprzedni model opierał się o trzy atrybuty – LDH, hs-CRP i limfocyty, ponieważ zostały one wskazane w artykule dołączonym do zestawu danych.
+
+Klasa śmiertelności pacjentów w zbiorze danych może być zależna od wielu czynników. Oto markery najbardziej skorelowane z atrybutem `outcome`. 
 
 ```{r warning=FALSE}
 coeff <- as.data.frame(sapply(names(merged[,-(1:3)]), function(marker){
   return(round(cor.test(unlist(merged[,"outcome"]), unlist(merged[,marker]), method='pearson')$estimate,2))
 }))
+
 row.names(coeff) <- names(merged[,-(1:3)])
 names(coeff) <- c("coeff")
 coeff  %>% arrange(desc(abs(coeff))) %>% head(10) %>% knitr::kable(format="html", table.attr = "style='width:40%;'", align = 'c')
 ```
+
+Współczynnik Pearsona w żadnym przypadku nie jest silny.
+
+Kolejny klasyfikator mógłby opierać się o inny zestaw atrybutów, co mogłoby poprawić jego pracę.
