@@ -39,7 +39,7 @@ Wiedza ta, ma za zadanie umożliwić personelowi medycznemu przyznawania pierwsz
 W raporcie w sekcji [Analiza LDH, limfocytów i hs-CRP](#analiza-ldh-limfocytów-i-hs-crp) potwierdzono istotność tych wskaźników medycznych. Histogramy ich wartości obrazują różnice w poziomach, między późniejszymi ozdrowieńcami i denatami. 
 
 
-Między atrybutami zauważalne były korelacje, ale te najsilniejsze są takie z powodów oczywistych dla osoby z podstawowym wykształceniem medycznym. W sekcji dotyczącej [korelacji](#korelacja-miedzy-atrybutami) nie zdefiniowano żadnych wniosków, bo niestety żadne nie są widoczne.
+Między atrybutami zauważalne były korelacje, ale te najsilniejsze są takie z powodów oczywistych dla osoby z podstawowym wykształceniem medycznym. W sekcji dotyczącej [korelacji](#Korelacja_między_atrybutami) nie zdefiniowano żadnych wniosków, bo niestety żadne nie są widoczne.
 
 
 Na potrzeby raportu, został zaprojektowany klasyfikator typu `Random Forest`. Model samoczynnie zoptymalizował najbardziej kluczowe elementy. Zestaw danych treningowych i testowych stanowiły oczyszczone z szumu dane wejściowe raportu. Jako zbiór atrybutów do klasyfikacji posłużyły trzy omawiane wcześniej biomarkery. Dokładność predykcji wynosi 94%.
@@ -481,7 +481,7 @@ levels(biomarkers$danger) <- c("no", "yes")
 biomarkers %>% drop_na() %>% knitr::kable()
 ```
 
-Wynika to z tego, że pacjenci mogli mieć badane różne cechy w ciągu dnia o różnych godzinach, tzn. LDH mogło być badane o 9:00, a limfocyty o 14:00. W zbiorze zostało to zapisane w osobnych rekordach, więc te dwa wskaźniki nie zostałyby powiązane i nie trafiłyby na wejście klasyfikatora.
+To tylko 5 rekordów. Wynika to z tego, że pacjenci mogli mieć badane różne cechy w ciągu dnia o różnych godzinach, tzn. LDH mogło być badane o 9:00, a limfocyty o 14:00. W zbiorze zostało to zapisane w osobnych rekordach, więc te dwa wskaźniki nie zostałyby powiązane i nie trafiłyby na wejście klasyfikatora.
 <br/>
 <br/>
 Na potrzeby eksperymentu, badania każdego pacjenta zostały pogrupowane na poziomie dnia, a wartości kolejnych atrybutów zostały uśrednione, co wpływa korzystnie na kompletność danych w każdym rekordzie. 

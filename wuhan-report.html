@@ -1583,7 +1583,7 @@ div.tocify {
 
 <h1 class="title toc-ignore">Analiza próbek krwi pacjentów chorych na COVID-19</h1>
 <h4 class="author">Damian Szkudlarek</h4>
-<h4 class="date">30.11.2020 r.</h4>
+<h4 class="date">01.12.2020 r.</h4>
 
 </div>
 
@@ -1600,7 +1600,7 @@ text-align: justify}
 <p>Pacjenci, którzy przeżyli zakażenie wirusem byli dłużej hospitalizowani, niż osoby które zmarły wskutek zakażenia. Największą różnorodnością w długości przebywania w szpitalu miały osoby w wieku 51-60 lat.</p>
 <p>W sekcji <a href="#kluczowe-wskaźniki-biomedyczne">Kluczowe wskaźniki biomedyczne</a> przybliżone zostały trzy biomarkery, które w wielu źródłach medycznych są nazywane kluczowymi. Te wskaźniki to dehydrogenaza mleczanowa (LDH), poziom limfocytów oraz wysokoczułe białko C-reaktywne (hs-CRP). Na podstawie ich poziomu można z wyprzedzeniem wskazać czy pacjent zarażony wirusem SARS-CoV-2 przejdzie COVID-19 z ciężkimi objawami (możliwie śmiertelnymi), czy też nie. Wiedza ta, ma za zadanie umożliwić personelowi medycznemu przyznawania pierwszeństwa zasobów ludzkich i sprzętowych osobom z największym zagrożeniem życia.</p>
 <p>W raporcie w sekcji <a href="#analiza-ldh-limfocytów-i-hs-crp">Analiza LDH, limfocytów i hs-CRP</a> potwierdzono istotność tych wskaźników medycznych. Histogramy ich wartości obrazują różnice w poziomach, między późniejszymi ozdrowieńcami i denatami.</p>
-<p>Między atrybutami zauważalne były korelacje, ale te najsilniejsze są takie z powodów oczywistych dla osoby z podstawowym wykształceniem medycznym. W sekcji dotyczącej <a href="#korelacja-miedzy-atrybutami">korelacji</a> nie zdefiniowano żadnych wniosków, bo niestety żadne nie są widoczne.</p>
+<p>Między atrybutami zauważalne były korelacje, ale te najsilniejsze są takie z powodów oczywistych dla osoby z podstawowym wykształceniem medycznym. W sekcji dotyczącej <a href="#Korelacja_między_atrybutami">korelacji</a> nie zdefiniowano żadnych wniosków, bo niestety żadne nie są widoczne.</p>
 <p>Na potrzeby raportu, został zaprojektowany klasyfikator typu <code>Random Forest</code>. Model samoczynnie zoptymalizował najbardziej kluczowe elementy. Zestaw danych treningowych i testowych stanowiły oczyszczone z szumu dane wejściowe raportu. Jako zbiór atrybutów do klasyfikacji posłużyły trzy omawiane wcześniej biomarkery. Dokładność predykcji wynosi 94%.</p>
 </div>
 <div id="biblioteki" class="section level1">
@@ -2827,7 +2827,7 @@ Najmłodszy mężczyzna ma 19 lat, najstarszy 95. Średnio mężczyźni mają 62
 </tr>
 </tbody>
 </table>
-<p>Wynika to z tego, że pacjenci mogli mieć badane różne cechy w ciągu dnia o różnych godzinach, tzn. LDH mogło być badane o 9:00, a limfocyty o 14:00. W zbiorze zostało to zapisane w osobnych rekordach, więc te dwa wskaźniki nie zostałyby powiązane i nie trafiłyby na wejście klasyfikatora. <br /> <br /> Na potrzeby eksperymentu, badania każdego pacjenta zostały pogrupowane na poziomie dnia, a wartości kolejnych atrybutów zostały uśrednione, co wpływa korzystnie na kompletność danych w każdym rekordzie.</p>
+<p>To tylko 5 rekordów. Wynika to z tego, że pacjenci mogli mieć badane różne cechy w ciągu dnia o różnych godzinach, tzn. LDH mogło być badane o 9:00, a limfocyty o 14:00. W zbiorze zostało to zapisane w osobnych rekordach, więc te dwa wskaźniki nie zostałyby powiązane i nie trafiłyby na wejście klasyfikatora. <br /> <br /> Na potrzeby eksperymentu, badania każdego pacjenta zostały pogrupowane na poziomie dnia, a wartości kolejnych atrybutów zostały uśrednione, co wpływa korzystnie na kompletność danych w każdym rekordzie.</p>
 <pre class="r"><code>merged &lt;- df %&gt;%
   mutate(RE_DATE = as.Date(RE_DATE)) %&gt;% 
   group_by(PATIENT_ID, RE_DATE) %&gt;%
